@@ -1,48 +1,46 @@
-<nav nav-type="search" />
 <view class="home-container">
-  <view class="home-content">
-    <t-tabs defaultValue="recommend">
-      <t-tab-panel label="推荐" value="recommend">
-        <t-pull-down-refresh
-          value="{{enable}}"
-          bind:refresh="onRefresh"
-          loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
-        >
-          <view class="home-card-list">
-            <t-swiper
-              list="{{swiperList}}"
-              navigation="{{ { type: 'dots-bar' } }}"
-              height="488rpx"
-              style="width: 340rpx"
-            />
-            <card
-              wx:for="{{cardInfo}}"
-              wx:key="index"
-              desc="{{item.desc}}"
-              url="{{item.url}}"
-              tags="{{item.tags}}"
+  <nav title-text="{{title}}" />
+
+  <scroll-view class="home-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <!-- 顶部信息条：固定在滚动区域顶部，显示总数和提示 -->
+    <view class="home-bar">
+      <text class="home-bar__count">{{total}} 张</text>
+      <text class="home-bar__hint">点击播放</text>
+    </view>
+
+    <view class="home-grid">
+      <block wx:for="{{rows}}" wx:for-item="row" wx:key="index">
+        <!-- 分组标题：带一条竖色条，标出分类边界 -->
+        <view wx:if="{{row.groupStart}}" class="home-group">
+          <view class="home-group__bar" />
+          <text class="home-group__text">{{row.label}}</text>
+          <text class="home-group__count">{{row.count}} 张</text>
+        </view>
+
+        <view class="home-grid__row {{row.partial ? 'home-grid__row--partial' : ''}}">
+          <view
+            wx:for="{{row.items}}"
+            wx:for-item="pic"
+            wx:key="image"
+            class="home-cell {{row.columns > 2 ? 'home-cell--shrink' : ''}}"
+            style="width: {{pic.width}}px; height: {{pic.height}}px;"
+            hover-class="home-cell--active"
+            hover-stay-time="120"
+            bind:tap="onImageTap"
+            data-audio="{{pic.audio}}"
+          >
+            <t-image
+              t-class="home-cell__image"
+              src="{{pic.image}}"
+              mode="scaleToFill"
+              lazy
+              bind:error="onImageError"
             />
           </view>
-        </t-pull-down-refresh>
-      </t-tab-panel>
-      <t-tab-panel label="我的关注" value="follow">
-        <view class="home-card-list">
-          <card
-            wx:for="{{focusCardInfo}}"
-            wx:key="index"
-            desc="{{item.desc}}"
-            url="{{item.url}}"
-            tags="{{item.tags}}"
-          />
         </view>
-      </t-tab-panel>
-    </t-tabs>
-  </view>
-</view>
+      </block>
 
-<view class="home-release">
-  <t-button theme="primary" size="large" icon="add" shape="round" bindtap="goRelease">
-    发布
-  </t-button>
+      <view class="home-end">— 到底了 —</view>
+    </view>
+  </scroll-view>
 </view>
-<t-message id="t-message" />

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>图片原始尺寸预览（1:1 按 375pt 手机宽度）</title>
+<style>
+  body { margin: 0; background: #f3f3f3; font: 14px/1.5 -apple-system, "Microsoft YaHei", sans-serif; }
+  .note { padding: 12px 16px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+  .note b { color: #d03050; }
+  .err { color: #d03050; padding: 16px; }
+  /* 模拟 375pt 宽的手机 */
+  .phone { width: 375px; margin: 16px auto; background: #f3f3f3; min-height: 812px; box-shadow: 0 0 0 1px #ddd; }
+  .navbar { padding: 12px 0; text-align: center; background: #fff; font-weight: 600; border-bottom: 1px solid #eee; }
+  /* 与 pages/home/index.less 保持一致（rpx / 2 = px） */
+  .bar { display: flex; align-items: baseline; justify-content: space-between;
+         padding: 10px 12px; background: #f3f3f3; border-bottom: 1px solid rgba(0,0,0,.05); }
+  .bar .count { flex: none; font-size: 14px; font-weight: 600; color: #1f1f1f; }
+  .bar .hint { flex: 1; min-width: 0; text-align: right; font-size: 11px; color: #999; }
+  .grid { padding: 0 12px 12px; }
+  .group { display: flex; align-items: center; gap: 6px; margin: 24px 0 10px; }
+  .group:first-child { margin-top: 12px; }
+  .group .bar-mark { width: 3px; height: 13px; border-radius: 2px; background: #0052d9; }
+  .group .text { font-size: 13px; font-weight: 600; color: #1f1f1f; }
+  .group .gcount { font-size: 11px; color: #999; }
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .group + .row { margin-top: 0; }
+  .row.partial { justify-content: center; }
+  .cell { flex: none; border-radius: 6px; overflow: hidden; background: #e7e7e7;
+          box-shadow: 0 1px 5px rgba(0,0,0,.08); }
+  .cell.shrink { flex-shrink: 1; min-width: 0; border-radius: 5px; }
+  .cell img { display: block; width: 100%; height: 100%; }
+  .end { margin-top: 24px; text-align: center; font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+<div class="note">
+  按 <b>图片原始像素尺寸</b> 渲染（1px = 1 CSS px），模拟 375pt 宽手机。<br>
+  数据直接读 <code>data/classify.js</code>，改配置后刷新即可，不会和代码不一致。
+</div>
+<div class="phone">
+  <div class="navbar" id="navbar">加载中…</div>
+  <div class="bar">
+    <span class="count" id="total">—</span>
+    <span class="hint">点击播放</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+// 直接解析 data/classify.js 源文件，避免预览和真实配置各写一份导致不一致
+const CONFIG_PATH = '../data/classify.js';
+
+function parseConfig(src) {
+  const tab = (src.match(/tab:\s*'([^']+)'/) || [])[1] || '';
+  const images = [
+    ...src.matchAll(
+      /image:\s*'([^']+)',\s*group:\s*'([^']*)',\s*width:\s*(\d+),\s*height:\s*(\d+)/g,
+    ),
+  ].map((m) => ({ image: m[1], group: m[2], width: Number(m[3]), height: Number(m[4]) }));
+  return { tab, images };
+}
+
+// 与 pages/home/index.js 的 toRows 保持一致：分组决定每行张数，一组结束就换行
+const COLUMNS_BY_GROUP = { 2: 4 };
+const DEFAULT_COLUMNS = 2;
+const GROUP_LABELS = { 2: '小尺寸', 4: '中尺寸', 6: '大尺寸' };
+const columnsOf = (group) => COLUMNS_BY_GROUP[group] || DEFAULT_COLUMNS;
+
+function toRows(images) {
+  const rows = [];
+  let items = [];
+  images.forEach((pic) => {
+    const columns = columnsOf(pic.group);
+    if (items.length && (items.length === columns || pic.group !== items[0].group)) {
+      rows.push({ items, group: items[0].group, columns: columnsOf(items[0].group) });
+      items = [];
+    }
+    items.push(pic);
+  });
+  if (items.length) rows.push({ items, group: items[0].group, columns: columnsOf(items[0].group) });
+
+  const totals = images.reduce((acc, pic) => {
+    acc[pic.group] = (acc[pic.group] || 0) + 1;
+    return acc;
+  }, {});
+
+  return rows.map((row, i) => {
+    const groupStart = i === 0 || rows[i - 1].group !== row.group;
+    return {
+      ...row,
+      groupStart,
+      label: groupStart ? GROUP_LABELS[row.group] || '' : '',
+      count: totals[row.group],
+      partial: row.items.length < row.columns,
+    };
+  });
+}
+
+fetch(CONFIG_PATH)
+  .then((r) => r.text())
+  .then((src) => {
+    const { tab, images } = parseConfig(src);
+    if (!images.length) throw new Error('没解析到图片，检查一下 data/classify.js 的格式');
+
+    document.getElementById('navbar').textContent = tab;
+    document.getElementById('total').textContent = `${images.length} 张`;
+    const grid = document.getElementById('grid');
+    const rows = toRows(images);
+    rows.forEach((row) => {
+      // 与页面一致：分组首行前面插一条分组标题
+      if (row.groupStart) {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'group';
+        groupEl.innerHTML =
+          '<div class="bar-mark"></div>' +
+          `<span class="text">${row.label}</span>` +
+          `<span class="gcount">${row.count} 张</span>`;
+        grid.appendChild(groupEl);
+      }
+
+      const rowEl = document.createElement('div');
+      rowEl.className = row.partial ? 'row partial' : 'row';
+      row.items.forEach((pic) => {
+        const cell = document.createElement('div');
+        cell.className = row.columns > 2 ? 'cell shrink' : 'cell';
+        cell.style.width = `${pic.width}px`;
+        cell.style.height = `${pic.height}px`;
+        cell.dataset.expect = `${pic.width}x${pic.height}`;
+        const img = document.createElement('img');
+        img.src = `..${pic.image}`;
+        img.alt = pic.image;
+        cell.appendChild(img);
+        rowEl.appendChild(cell);
+      });
+      grid.appendChild(rowEl);
+    });
+
+    const end = document.createElement('div');
+    end.className = 'end';
+    end.textContent = '— 到底了 —';
+    grid.appendChild(end);
+
+    // 渲染后核对实际尺寸，确认没有被拉伸（多列行允许按比例略微缩小）
+    window.addEventListener('load', () => {
+      const bad = [];
+      document.querySelectorAll('.cell').forEach((cell) => {
+        const r = cell.getBoundingClientRect();
+        const [w, h] = cell.dataset.expect.split('x').map(Number);
+        if (Math.round(r.height) !== h || r.width > w + 1) {
+          bad.push(`${cell.dataset.expect} -> ${Math.round(r.width)}x${Math.round(r.height)}`);
+        }
+      });
+      const cells = document.querySelectorAll('.cell').length;
+      const rows = document.querySelectorAll('.row').length;
+      const multi = [...document.querySelectorAll('.row')].filter(
+        (r) => r.querySelectorAll('.cell').length > 2,
+      ).length;
+      console.log(
+        bad.length
+          ? `尺寸异常 ${bad.length}/${cells}: ${bad.join(', ')}`
+          : `共 ${rows} 行 / ${cells} 张，尺寸正常（${multi} 行为多列排布）`,
+      );
+    });
+  })
+  .catch((err) => {
+    document.getElementById('grid').innerHTML = `<div class="err">加载失败：${err.message}</div>`;
+  });
+</script>
+</body>
+</html>

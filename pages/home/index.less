@@ -1,39 +1,139 @@
 @import '/variable.less';
 
-@home-tab-item-height: 96rpx;
-
 .home-container {
-  height: calc(100vh - @tab-bar-height);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: @bg-color;
+}
 
-  .home-content {
-    height: calc(100% - @nav-bar-height);
+// 撑满导航栏以下的全部空间
+.home-scroll {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+  background-color: @bg-color;
+}
+
+// 顶部信息条：滚动时固定在顶部
+.home-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 20rpx 24rpx;
+  background-color: fade(@bg-color, 96%);
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+
+  &__count {
+    flex: none;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: @font-color-primary;
   }
 
-  .t-tabs {
-    --td-tab-item-tag-height: @home-tab-item-height;
-    --td-tab-font-size: @font-size-small;
-    width: 100%;
-    height: 100%;
-
-    &__content {
-      height: calc(100% - @home-tab-item-height);
-      overflow: auto;
-      background-color: @bg-color;
-    }
-  }
-
-  .home-card-list {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 24rpx 12rpx;
-    padding: 24rpx;
-    background-color: @bg-color;
+  &__hint {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    font-size: 22rpx;
+    color: @font-color-secondary;
   }
 }
 
-.home-release {
-  position: fixed;
-  bottom: 208rpx;
-  right: 32rpx;
+.home-grid {
+  padding: 0 24rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+// 分组标题：竖色条 + 名称 + 数量
+.home-group {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 48rpx;
+  margin-bottom: 20rpx;
+
+  &:first-child {
+    margin-top: 24rpx;
+  }
+
+  &__bar {
+    width: 6rpx;
+    height: 26rpx;
+    border-radius: 3rpx;
+    background-color: @brand-color;
+  }
+
+  &__text {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: @font-color-primary;
+  }
+
+  &__count {
+    font-size: 22rpx;
+    color: @font-color-secondary;
+  }
+}
+
+.home-grid__row {
+  display: flex;
+  // 同一行里图片高度不同时竖直居中对齐，避免高矮不齐
+  align-items: center;
+  gap: 24rpx;
+  // 只用 margin-top 控制行距，避免上下 margin 折叠导致间距算不准
+  margin-top: 20rpx;
+
+  // 紧跟在分组标题后面的首行不再重复留白
+  .home-group + & {
+    margin-top: 0;
+  }
+
+  // 不满一行的（比如 2 开头只有 3 张）水平居中，不然右边空一块很难看
+  &--partial {
+    justify-content: center;
+  }
+}
+
+// 每张图按自己的原始像素尺寸展示（width / height 在 wxml 里按配置写死），
+// 所以不是统一的方框：窄图就是窄的、方图就是方的、长图就是长的
+.home-cell {
+  flex: none;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 12rpx;
+  background-color: #e7e7e7;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+  // 按住时的反馈
+  &--active {
+    transform: scale(0.94);
+    box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
+  }
+
+  // 一排多列时总宽超出屏幕的话，允许按比例稍微缩小
+  &--shrink {
+    flex-shrink: 1;
+    min-width: 0;
+    border-radius: 10rpx;
+  }
+}
+
+// t-image 默认是 inline-block，改成 block 让图片在格子里撑满
+.home-cell__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+// 列表到底的提示
+.home-end {
+  margin-top: 48rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: @font-color-secondary;
 }
